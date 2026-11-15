@@ -58,3 +58,6 @@ jobs:
         with:
           name: m-grow-apk
           path: m_grow/build/app/outputs/flutter-apk/app-release.apk
+- name: Claude AutoFix
+
+  uses: enriconunes/claude-autofix-action@v2.1.2
