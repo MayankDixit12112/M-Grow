@@ -7,6 +7,9 @@ on:
       - "m_grow/**"
       - ".github/workflows/build.yml"
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -61,3 +64,15 @@ jobs:
         with:
           name: m-grow-apk
           path: m_grow/build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Publish APK to Releases (easy phone download)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk M-Grow.apk
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest M-Grow.apk \
+            --target "$GITHUB_SHA" \
+            --prerelease \
+            --title "M Grow - latest test build" \
+            --notes "Test build for Android. Download M-Grow.apk, open it, and allow installs from this source when Android asks."
