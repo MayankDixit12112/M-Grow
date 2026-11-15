@@ -2,14 +2,21 @@ name: Build M Grow APK
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - "m_grow/**"
+      - ".github/workflows/build.yml"
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: m_grow
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -19,45 +26,38 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Unpack project and create Android files
+      - name: Create Android files
         run: |
-          unzip -q m_grow.zip
-          cd m_grow
           flutter create --platforms=android --org com.mgrow --project-name m_grow .
           rm -rf test
 
       - name: Add permissions and app name
-        working-directory: m_grow
         run: |
-          python3 -c "
+          python3 - <<'PY'
           p = 'android/app/src/main/AndroidManifest.xml'
           s = open(p).read()
-          add = ('<uses-permission android:name=\"android.permission.INTERNET\"/>\n'
-                 '    <uses-permission android:name=\"android.permission.ACTIVITY_RECOGNITION\"/>\n'
-                 '    <queries><intent><action android:name=\"android.intent.action.SENDTO\"/>'
-                 '<data android:scheme=\"mailto\"/></intent></queries>\n    ')
+          add = (
+              '<uses-permission android:name="android.permission.INTERNET"/>\n'
+              '    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>\n'
+              '    <queries><intent><action android:name="android.intent.action.SENDTO"/>'
+              '<data android:scheme="mailto"/></intent></queries>\n    '
+          )
           s = s.replace('<application', add + '<application', 1)
-          s = s.replace('android:label=\"m_grow\"', 'android:label=\"M Grow\"')
+          s = s.replace('android:label="m_grow"', 'android:label="M Grow"')
           open(p, 'w').write(s)
-          "
+          PY
 
       - name: Get packages
-        working-directory: m_grow
         run: flutter pub get
 
-      - name: Check code (shows problems in the log)
-        working-directory: m_grow
+      - name: Check code (lists problems)
         continue-on-error: true
         run: flutter analyze
 
       - name: Build APK
-        working-directory: m_grow
         run: flutter build apk --release
 
       - uses: actions/upload-artifact@v4
         with:
           name: m-grow-apk
           path: m_grow/build/app/outputs/flutter-apk/app-release.apk
-- name: Claude AutoFix
-
-  uses: enriconunes/claude-autofix-action@v2.1.2
