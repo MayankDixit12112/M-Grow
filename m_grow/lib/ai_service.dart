@@ -50,7 +50,6 @@ class AiService {
           Uri.parse(Config.aiEndpoint),
           headers: {
             'content-type': 'application/json',
-            'x-app-token': Config.appToken,
           },
           body: jsonEncode(body),
         )

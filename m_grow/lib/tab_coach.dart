@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'ai_service.dart';
 import 'l10n.dart';
 import 'models.dart';
+import 'offline_coach.dart';
 import 'storage.dart';
 
 class CoachTab extends StatefulWidget {
@@ -29,6 +30,9 @@ class _CoachTabState extends State<CoachTab> {
   final List<_Msg> _msgs = [];
   bool _busy = false;
 
+  /// Online AI is used only when the server is set up and the person is 13+.
+  bool get _online => AiService.enabled && widget.profile.age >= 13;
+
   @override
   void dispose() {
     _c.dispose();
@@ -45,20 +49,39 @@ class _CoachTabState extends State<CoachTab> {
     });
   }
 
+  void _addLocal(String role, String text) =>
+      setState(() => _msgs.add(_Msg(role, text, local: true)));
+
+  void _tapTopic(Topic t) {
+    setState(() {
+      _msgs.add(_Msg('user', tr(t.chipKey), local: true));
+      _msgs.add(_Msg('assistant', OfflineCoach.answerFor(t, widget.profile),
+          local: true));
+    });
+    _toBottom();
+  }
+
   Future<void> _send() async {
     final text = _c.text.trim();
     if (text.isEmpty || _busy) return;
-    if (text.length > 1000) {
-      _c.text = text.substring(0, 1000);
-    }
     final msg = text.length > 1000 ? text.substring(0, 1000) : text;
     _c.clear();
     setState(() => _msgs.add(_Msg('user', msg)));
     _toBottom();
 
-    // Safety check on the phone, before anything is sent.
+    // Safety checks on the phone, before anything is sent anywhere.
     if (AiService.looksLikeCrisis(msg)) {
-      setState(() => _msgs.add(_Msg('assistant', tr('coach_crisis'), local: true)));
+      _addLocal('assistant', tr('coach_crisis'));
+      _toBottom();
+      return;
+    }
+    if (OfflineCoach.sensitive(msg, widget.profile)) {
+      _addLocal('assistant', tr('n_ed'));
+      _toBottom();
+      return;
+    }
+    if (!_online) {
+      _addLocal('assistant', OfflineCoach.reply(msg, widget.profile));
       _toBottom();
       return;
     }
@@ -74,7 +97,8 @@ class _CoachTabState extends State<CoachTab> {
       setState(() => _msgs.add(_Msg('assistant', reply)));
     } catch (_) {
       if (!mounted) return;
-      setState(() => _msgs.add(_Msg('assistant', tr('coach_err'), local: true)));
+      _addLocal('assistant',
+          '${tr('oc_ai_fail')}\n\n${OfflineCoach.reply(msg, widget.profile)}');
     } finally {
       if (mounted) setState(() => _busy = false);
       _toBottom();
@@ -87,16 +111,26 @@ class _CoachTabState extends State<CoachTab> {
       final theme = Theme.of(context);
       final p = widget.profile;
 
-      if (p.age < 13) {
-        return _info(Icons.family_restroom, tr('coach_kids'));
-      }
-      if (!AiService.enabled) {
-        return _info(Icons.cloud_off, tr('coach_off'));
-      }
-
       return Column(
         children: [
-          if (!p.isMinor)
+          Container(
+            width: double.infinity,
+            color: theme.colorScheme.secondaryContainer,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: Row(
+              children: [
+                Icon(_online ? Icons.cloud_done : Icons.bolt, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    tr(_online ? 'oc_online' : 'oc_offline'),
+                    style: theme.textTheme.labelLarge,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (_online && !p.isMinor)
             SwitchListTile(
               dense: true,
               title: Text(tr('coach_share'), style: theme.textTheme.bodySmall),
@@ -106,12 +140,17 @@ class _CoachTabState extends State<CoachTab> {
                 widget.onChanged();
               },
             ),
+          if (AiService.enabled && p.age < 13)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+              child: Text(tr('coach_kids'), style: theme.textTheme.bodySmall),
+            ),
           Expanded(
             child: ListView(
               controller: _scroll,
               padding: const EdgeInsets.all(12),
               children: [
-                _bubble(context, tr('coach_welcome'), false),
+                _bubble(context, tr(_online ? 'coach_welcome' : 'oc_intro'), false),
                 for (final m in _msgs) _bubble(context, m.text, m.role == 'user'),
                 if (_busy)
                   const Padding(
@@ -123,6 +162,24 @@ class _CoachTabState extends State<CoachTab> {
                         height: 22,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          SizedBox(
+            height: 48,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              children: [
+                for (final t in topics)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ActionChip(
+                      avatar: Icon(t.icon, size: 18),
+                      label: Text(tr(t.chipKey)),
+                      onPressed: _busy ? null : () => _tapTopic(t),
                     ),
                   ),
               ],
@@ -163,20 +220,6 @@ class _CoachTabState extends State<CoachTab> {
       );
     });
   }
-
-  Widget _info(IconData icon, String text) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 48),
-              const SizedBox(height: 12),
-              Text(text, textAlign: TextAlign.center),
-            ],
-          ),
-        ),
-      );
 
   Widget _bubble(BuildContext context, String text, bool mine) {
     final cs = Theme.of(context).colorScheme;

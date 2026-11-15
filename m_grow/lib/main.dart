@@ -3,14 +3,12 @@ import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import 'l10n.dart';
 import 'onboarding_screen.dart';
-import 'steps_service.dart';
 import 'storage.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Storage.init();
   L10n.lang.value = Storage.language() ?? 'en';
-  StepsService.resumeIfEnabled(); // fire and forget
   runApp(const MGrowApp());
 }
 

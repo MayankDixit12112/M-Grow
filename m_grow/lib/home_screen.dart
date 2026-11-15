@@ -4,6 +4,7 @@ import 'calculator.dart';
 import 'l10n.dart';
 import 'models.dart';
 import 'planner.dart';
+import 'steps_service.dart';
 import 'storage.dart';
 import 'tab_coach.dart';
 import 'tab_log.dart';
@@ -28,6 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _load();
+    StepsService.autoStart(); // steps count by themselves
   }
 
   void _load() {
@@ -42,7 +44,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return LangScope(builder: (context) {
       final pages = <Widget>[
-        TodayTab(profile: profile, targets: targets, week: week),
+        TodayTab(
+            profile: profile, targets: targets, week: week, onChanged: _reload),
         LogTab(profile: profile),
         PlanTab(profile: profile, targets: targets, week: week),
         CoachTab(profile: profile, onChanged: _reload),

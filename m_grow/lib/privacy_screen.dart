@@ -10,7 +10,11 @@ class PrivacyScreen extends StatelessWidget {
   Future<String> _load() async {
     final raw = await rootBundle.loadString('assets/privacy_policy.md');
     return raw
-        .replaceAll('{{EMAIL}}', Config.feedbackEmail)
+        .replaceAll(
+            '{{EMAIL}}',
+            Config.feedbackEmail.isEmpty
+                ? 'the Feedback screen in the app'
+                : Config.feedbackEmail)
         .replaceAll('{{DEVELOPER}}', Config.developerName);
   }
 

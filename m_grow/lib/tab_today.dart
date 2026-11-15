@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import 'calculator.dart';
 import 'coach_logic.dart';
@@ -6,6 +7,7 @@ import 'l10n.dart';
 import 'medical.dart';
 import 'models.dart';
 import 'planner.dart';
+import 'height_screen.dart';
 import 'steps_service.dart';
 import 'storage.dart';
 
@@ -13,12 +15,14 @@ class TodayTab extends StatelessWidget {
   final UserProfile profile;
   final Targets targets;
   final List<List<PlannedMeal>> week;
+  final VoidCallback onChanged;
 
   const TodayTab({
     super.key,
     required this.profile,
     required this.targets,
     required this.week,
+    required this.onChanged,
   });
 
   @override
@@ -56,10 +60,7 @@ class TodayTab extends StatelessWidget {
       ),
     );
     c.dispose();
-    if (v != null) {
-      log.steps = v;
-      await Storage.saveLog(key, log);
-    }
+    if (v != null) await StepsService.setToday(v);
   }
 
   Widget _macro(BuildContext context, String label, String value) => Expanded(
@@ -75,6 +76,73 @@ class TodayTab extends StatelessWidget {
           ),
         ),
       );
+
+  Widget _stepStatus(BuildContext context, String st) {
+    final small = Theme.of(context).textTheme.bodySmall;
+    switch (st) {
+      case 'on':
+        return Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.green, size: 18),
+                  const SizedBox(width: 6),
+                  Expanded(child: Text(tr('st_on'))),
+                ],
+              ),
+              Text(tr('st_note'), style: small),
+            ],
+          ),
+        );
+      case 'denied':
+        return Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(tr('st_denied')),
+              const SizedBox(height: 6),
+              FilledButton.tonal(
+                onPressed: StepsService.start,
+                child: Text(tr('st_allow')),
+              ),
+            ],
+          ),
+        );
+      case 'blocked':
+        return Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(tr('st_blocked')),
+              const SizedBox(height: 6),
+              FilledButton.tonal(
+                onPressed: openAppSettings,
+                child: Text(tr('st_settings')),
+              ),
+            ],
+          ),
+        );
+      case 'unsupported':
+        return Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text(tr('st_unsup')),
+        );
+      default:
+        return Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: StepsService.start,
+            icon: const Icon(Icons.directions_walk),
+            label: Text(tr('steps_auto')),
+          ),
+        );
+    }
+  }
 
   Widget _body(BuildContext context) {
     final key = Storage.todayKey();
@@ -159,24 +227,9 @@ class TodayTab extends StatelessWidget {
                     child: Text('${tr('burned')}: $burned kcal',
                         style: theme.textTheme.bodyMedium),
                   ),
-                ValueListenableBuilder<bool>(
-                  valueListenable: StepsService.running,
-                  builder: (context, on, _) => SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(tr('steps_auto')),
-                    value: on,
-                    onChanged: (v) async {
-                      if (v) {
-                        final ok = await StepsService.start();
-                        if (!ok && context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(tr('steps_enter'))));
-                        }
-                      } else {
-                        await StepsService.stop();
-                      }
-                    },
-                  ),
+                ValueListenableBuilder<String>(
+                  valueListenable: StepsService.status,
+                  builder: (context, st, _) => _stepStatus(context, st),
                 ),
                 Align(
                   alignment: Alignment.centerLeft,
@@ -201,6 +254,19 @@ class TodayTab extends StatelessWidget {
               },
               child: Text(tr('glass_add')),
             ),
+          ),
+        ),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.height),
+            title: Text(tr('hg_card_title')),
+            subtitle: Text(tr('hg_card_sub')),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () async {
+              await Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => HeightScreen(profile: profile)));
+              onChanged();
+            },
           ),
         ),
         if (streak > 0)

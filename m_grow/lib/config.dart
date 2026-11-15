@@ -1,16 +1,11 @@
-/// Edit these before you publish.
+/// Values are filled in by the GitHub build (see .github/workflows/build.yml).
 class Config {
-  /// URL of your AI coach proxy (see backend/worker.js). Leave empty to turn
-  /// the AI coach off. NEVER put an AI provider key inside the app.
-  static const aiEndpoint = '';
+  /// URL of the AI coach server. Empty means the coach uses built-in quick tips.
+  static const aiEndpoint = String.fromEnvironment('AI_ENDPOINT');
 
-  /// Shared token your proxy checks. It only deters casual abuse, it is not
-  /// real security. Also set rate limits and a spending cap on the proxy.
-  static const appToken = 'change-me';
+  /// Where feedback emails go. Set the GitHub variable FEEDBACK_EMAIL.
+  static const feedbackEmail = String.fromEnvironment('FEEDBACK_EMAIL');
 
-  /// Where feedback emails are sent.
-  static const feedbackEmail = 'your-email@example.com';
-
-  /// Shown in the privacy policy.
-  static const developerName = 'Your Name or Company';
+  static const developerName =
+      String.fromEnvironment('DEVELOPER_NAME', defaultValue: 'The M Grow team');
 }

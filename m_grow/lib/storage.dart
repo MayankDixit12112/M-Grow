@@ -101,6 +101,43 @@ class Storage {
     return n;
   }
 
+  // ---------- height log and habits ----------
+  static String? getString(String k) => _p.getString(k);
+  static Future<void> setString(String k, String v) => _p.setString(k, v);
+  static double? getDouble(String k) => _p.getDouble(k);
+  static Future<void> setDouble(String k, double v) => _p.setDouble(k, v);
+
+  static List<HeightEntry> loadHeights() {
+    final s = _p.getString('heights');
+    if (s == null) return [];
+    try {
+      return (jsonDecode(s) as List)
+          .map((e) => HeightEntry.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static Future<void> addHeight(double cm) async {
+    final list = loadHeights();
+    final today = todayKey();
+    list.removeWhere((e) => e.date == today);
+    list.add(HeightEntry(today, cm));
+    list.sort((a, b) => a.date.compareTo(b.date));
+    await _p.setString(
+        'heights', jsonEncode(list.map((e) => e.toJson()).toList()));
+  }
+
+  static Set<String> habitsFor(String dateKey) =>
+      (_p.getStringList('habits_$dateKey') ?? <String>[]).toSet();
+
+  static Future<void> toggleHabit(String dateKey, String habit) async {
+    final set = habitsFor(dateKey);
+    if (!set.remove(habit)) set.add(habit);
+    await _p.setStringList('habits_$dateKey', set.toList());
+  }
+
   // ---------- delete everything ----------
   static Future<void> deleteAll() async {
     await _p.clear();

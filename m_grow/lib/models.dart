@@ -63,12 +63,13 @@ class UserProfile {
     List<String>? conditions,
     String? notes,
     bool? shareWithCoach,
+    double? heightCm,
   }) =>
       UserProfile(
         name: name,
         age: age,
         sex: sex,
-        heightCm: heightCm,
+        heightCm: heightCm ?? this.heightCm,
         weightKg: weightKg,
         activity: activity,
         goal: goal,
@@ -202,4 +203,16 @@ class DayLog {
         steps: (j['steps'] as int?) ?? 0,
         waterMl: (j['water'] as int?) ?? 0,
       );
+}
+
+class HeightEntry {
+  final String date; // yyyy-MM-dd
+  final double cm;
+
+  const HeightEntry(this.date, this.cm);
+
+  Map<String, dynamic> toJson() => {'date': date, 'cm': cm};
+
+  factory HeightEntry.fromJson(Map<String, dynamic> j) =>
+      HeightEntry(j['date'] as String, (j['cm'] as num).toDouble());
 }

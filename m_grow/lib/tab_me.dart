@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'calculator.dart';
 import 'feedback_screen.dart';
 import 'health_screen.dart';
+import 'height_screen.dart';
 import 'l10n.dart';
 import 'models.dart';
 import 'onboarding_screen.dart';
@@ -111,6 +112,8 @@ class MeTab extends StatelessWidget {
           ),
           tile(Icons.show_chart, tr('me_progress'),
               () => _open(context, ProgressScreen(profile: profile, targets: targets))),
+          tile(Icons.height, tr('hg_card_title'),
+              () => _open(context, HeightScreen(profile: profile))),
           tile(Icons.medical_information, tr('me_health'),
               () => _open(context, HealthScreen(profile: profile))),
           tile(Icons.edit, tr('me_edit'),

@@ -11,7 +11,38 @@ permissions:
   contents: write
 
 jobs:
+  # Deploys the online AI coach (free Cloudflare Workers AI).
+  # Skipped automatically until you add the two Cloudflare secrets.
+  coach:
+    runs-on: ubuntu-latest
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    outputs:
+      url: ${{ steps.deploy.outputs.deployment-url }}
+    steps:
+      - uses: actions/checkout@v5
+        if: env.CF_TOKEN != ''
+
+      - name: Deploy AI coach
+        id: deploy
+        if: env.CF_TOKEN != ''
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: m_grow/backend
+
+      - name: Say what happened
+        run: |
+          if [ -z "$CF_TOKEN" ]; then
+            echo "No CLOUDFLARE_API_TOKEN secret yet: the AI coach is not deployed. The app uses built-in quick tips."
+          else
+            echo "AI coach address: ${{ steps.deploy.outputs.deployment-url }}"
+          fi
+
   build:
+    needs: coach
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -58,7 +89,10 @@ jobs:
         run: flutter analyze
 
       - name: Build APK
-        run: flutter build apk --release
+        run: >
+          flutter build apk --release
+          --dart-define=AI_ENDPOINT=${{ needs.coach.outputs.url }}
+          --dart-define=FEEDBACK_EMAIL=${{ vars.FEEDBACK_EMAIL }}
 
       - uses: actions/upload-artifact@v4
         with:

@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 
 import 'l10n.dart';
 import 'medical.dart';
+import 'food_search.dart';
 import 'models.dart';
 import 'parser.dart';
+import 'steps_service.dart';
 import 'storage.dart';
 
 class LogTab extends StatefulWidget {
@@ -43,6 +45,7 @@ class _LogTabState extends State<LogTab> {
   Future<void> _addAll() async {
     final key = Storage.todayKey();
     final log = Storage.loadLog(key);
+    int? stepsToSet;
     for (final it in _results) {
       if (it.food != null) {
         final f = it.food!;
@@ -58,10 +61,13 @@ class _LogTabState extends State<LogTab> {
         log.exercises.add(ExerciseEntry(
             it.exercise!.name, it.minutes, _exKcal(it), it.exercise!.walk));
       } else if (it.steps != null) {
-        log.steps = max(log.steps, it.steps!);
+        stepsToSet = max(stepsToSet ?? 0, it.steps!);
       }
     }
     await Storage.saveLog(key, log);
+    if (stepsToSet != null) {
+      await StepsService.setToday(max(Storage.loadLog(key).steps, stepsToSet));
+    }
     setState(() {
       _results = [];
       _calculated = false;
@@ -129,6 +135,18 @@ class _LogTabState extends State<LogTab> {
             padding: const EdgeInsets.all(16),
             children: [
               Text(tr('log_title'), style: theme.textTheme.titleLarge),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.tonalIcon(
+                  onPressed: () => showFoodSearch(context, widget.profile),
+                  icon: const Icon(Icons.search),
+                  label: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Text(tr('fs_search')),
+                  ),
+                ),
+              ),
               const SizedBox(height: 12),
               TextField(
                 controller: _c,
